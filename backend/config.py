@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     allowed_origins: List[str] = [
         "http://localhost:3000", 
         "http://localhost:3001",
+        "http://10.64.129.37:3000",
         "https://demobackend.emergentagent.com",
         "https://demofrontend.emergentagent.com",
         "*"  # Allow all origins for development
