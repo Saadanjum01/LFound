@@ -15,18 +15,35 @@ from passlib.context import CryptContext
 from jose import JWTError, jwt
 
 # Import models and database
-from .models import (
-    Profile, Item, ClaimRequest, AdminAction, Dispute,
-    ProfileCreate, ProfileUpdate, ProfileResponse,
-    ItemCreate, ItemUpdate, ItemResponse,
-    ClaimCreate, ClaimResponse,
-    AdminActionCreate, AdminActionResponse,
-    DisputeCreate, DisputeResponse,
-    LoginRequest, FileUploadResponse,
-    ItemType, ItemStatus, ClaimStatus, AdminActionType, DisputeStatus
-)
-from .database import init_database, close_mongo_connection, test_connection
-from .config import settings
+try:
+    from models import (
+        Profile, Item, ClaimRequest, AdminAction, Dispute,
+        ProfileCreate, ProfileUpdate, ProfileResponse,
+        ItemCreate, ItemUpdate, ItemResponse,
+        ClaimCreate, ClaimResponse,
+        AdminActionCreate, AdminActionResponse,
+        DisputeCreate, DisputeResponse,
+        LoginRequest, FileUploadResponse,
+        ItemType, ItemStatus, ClaimStatus, AdminActionType, DisputeStatus
+    )
+    from database import init_database, close_mongo_connection, test_connection
+    from config import settings
+except ImportError:
+    import sys
+    import os
+    sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+    from models import (
+        Profile, Item, ClaimRequest, AdminAction, Dispute,
+        ProfileCreate, ProfileUpdate, ProfileResponse,
+        ItemCreate, ItemUpdate, ItemResponse,
+        ClaimCreate, ClaimResponse,
+        AdminActionCreate, AdminActionResponse,
+        DisputeCreate, DisputeResponse,
+        LoginRequest, FileUploadResponse,
+        ItemType, ItemStatus, ClaimStatus, AdminActionType, DisputeStatus
+    )
+    from database import init_database, close_mongo_connection, test_connection
+    from config import settings
 
 # Initialize FastAPI app
 app = FastAPI(
