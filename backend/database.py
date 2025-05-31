@@ -2,8 +2,17 @@ import asyncio
 from typing import Optional
 from motor.motor_asyncio import AsyncIOMotorClient
 from beanie import init_beanie
-from models import Profile, Item, ClaimRequest, AdminAction, Dispute
-from config import settings
+
+# Import models with proper handling
+try:
+    from models import Profile, Item, ClaimRequest, AdminAction, Dispute
+    from config import settings
+except ImportError:
+    import sys
+    import os
+    sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+    from models import Profile, Item, ClaimRequest, AdminAction, Dispute
+    from config import settings
 
 class MongoDB:
     client: Optional[AsyncIOMotorClient] = None
