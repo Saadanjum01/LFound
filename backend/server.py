@@ -15,7 +15,7 @@ from passlib.context import CryptContext
 from jose import JWTError, jwt
 
 # Import models and database
-from models import (
+from .models import (
     Profile, Item, ClaimRequest, AdminAction, Dispute,
     ProfileCreate, ProfileUpdate, ProfileResponse,
     ItemCreate, ItemUpdate, ItemResponse,
@@ -25,8 +25,8 @@ from models import (
     LoginRequest, FileUploadResponse,
     ItemType, ItemStatus, ClaimStatus, AdminActionType, DisputeStatus
 )
-from database import init_database, close_mongo_connection, test_connection
-from config import settings
+from .database import init_database, close_mongo_connection, test_connection
+from .config import settings
 
 # Initialize FastAPI app
 app = FastAPI(
