@@ -217,10 +217,11 @@ class LostFoundAPITester:
 def main():
     # Get the backend URL from environment or use default
     import os
-    backend_url = os.environ.get('REACT_APP_BACKEND_URL', 'http://localhost:8001/api')
+    backend_url = os.environ.get('REACT_APP_BACKEND_URL', 'http://10.64.129.37:8001/api')
     
     # Setup
     tester = LostFoundAPITester(backend_url)
+    print(f"Using backend URL: {backend_url}")
     
     # Generate unique email for testing
     test_email = f"test_{uuid.uuid4().hex[:8]}@example.com"
