@@ -1,50 +1,105 @@
-from supabase import create_client, Client
+import asyncio
 from typing import Optional
-import logging
+from motor.motor_asyncio import AsyncIOMotorClient
+from beanie import init_beanie
+from models import Profile, Item, ClaimRequest, AdminAction, Dispute
 from config import settings
 
-logger = logging.getLogger(__name__)
+class MongoDB:
+    client: Optional[AsyncIOMotorClient] = None
 
-class SupabaseClient:
-    def __init__(self):
-        self.client: Optional[Client] = None
-        self.service_client: Optional[Client] = None
+# MongoDB connection instance
+mongodb = MongoDB()
+
+async def connect_to_mongo():
+    """Create database connection"""
+    mongodb.client = AsyncIOMotorClient(settings.mongo_url)
     
-    def get_client(self) -> Client:
-        """Get Supabase client with anon key (for frontend operations)"""
-        if not self.client:
-            if not settings.supabase_url or not settings.supabase_anon_key:
-                raise ValueError("Supabase URL and ANON KEY must be set in environment variables")
-            
-            self.client = create_client(
-                settings.supabase_url,
-                settings.supabase_anon_key
-            )
-            logger.info("Supabase client initialized")
+    # Initialize beanie with the Product document class and a database
+    await init_beanie(
+        database=mongodb.client[settings.database_name],
+        document_models=[
+            Profile,
+            Item, 
+            ClaimRequest,
+            AdminAction,
+            Dispute
+        ]
+    )
+    print("Connected to MongoDB")
+
+async def close_mongo_connection():
+    """Close database connection"""
+    if mongodb.client:
+        mongodb.client.close()
+        print("Disconnected from MongoDB")
+
+async def get_database():
+    """Get database instance"""
+    return mongodb.client[settings.database_name]
+
+# Helper functions for testing connection
+async def test_connection():
+    """Test database connection"""
+    try:
+        # The ismaster command is cheap and does not require auth.
+        await mongodb.client.admin.command('ismaster')
+        return True
+    except Exception as e:
+        print(f"Database connection failed: {e}")
+        return False
+
+async def create_indexes():
+    """Create additional indexes if needed"""
+    try:
+        db = await get_database()
         
-        return self.client
+        # Additional compound indexes for better query performance
+        await db.items.create_index([("item_type", 1), ("status", 1), ("created_at", -1)])
+        await db.items.create_index([("category", 1), ("item_type", 1)])
+        await db.claim_requests.create_index([("item_id", 1), ("status", 1)])
+        await db.profiles.create_index([("email", 1)], unique=True)
+        
+        print("Database indexes created successfully")
+    except Exception as e:
+        print(f"Error creating indexes: {e}")
+
+# Initialize database on startup
+async def init_database():
+    """Initialize database connection and setup"""
+    await connect_to_mongo()
+    await create_indexes()
     
-    def get_service_client(self) -> Client:
-        """Get Supabase client with service role key (for backend operations)"""
-        if not self.service_client:
-            if not settings.supabase_url or not settings.supabase_service_role_key:
-                raise ValueError("Supabase URL and SERVICE ROLE KEY must be set in environment variables")
-            
-            self.service_client = create_client(
-                settings.supabase_url,
-                settings.supabase_service_role_key
-            )
-            logger.info("Supabase service client initialized")
+    # Create default admin user if doesn't exist
+    await create_default_admin()
+
+async def create_default_admin():
+    """Create default admin user for testing"""
+    try:
+        from passlib.context import CryptContext
         
-        return self.service_client
+        pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+        
+        # Check if admin exists
+        admin_exists = await Profile.find_one(Profile.email == "admin@lostfound.com")
+        
+        if not admin_exists:
+            admin_user = Profile(
+                email="admin@lostfound.com",
+                full_name="System Administrator",
+                password_hash=pwd_context.hash("admin123"),
+                is_admin=True
+            )
+            await admin_user.insert()
+            print("Default admin user created: admin@lostfound.com / admin123")
+        else:
+            print("Admin user already exists")
+            
+    except Exception as e:
+        print(f"Error creating admin user: {e}")
 
-# Global instance
-supabase_client = SupabaseClient()
-
-def get_supabase() -> Client:
-    """Dependency to get Supabase client"""
-    return supabase_client.get_client()
-
-def get_supabase_admin() -> Client:
-    """Dependency to get Supabase service client for admin operations"""
-    return supabase_client.get_service_client() 
+# Utility function to get collection directly if needed
+async def get_collection(collection_name: str):
+    """Get collection instance"""
+    db = await get_database()
+    return db[collection_name]
