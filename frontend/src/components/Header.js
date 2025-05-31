@@ -103,12 +103,12 @@ const Header = () => {
                 {/* User Menu */}
                 <div className="relative group">
                   <button className="flex items-center space-x-2 p-2 rounded-full hover:bg-white/10 transition-all duration-200">
-                    <img
-                      src={user.avatar}
-                      alt={user.name}
-                      className="w-8 h-8 rounded-full"
-                    />
-                    <span className="hidden md:block text-sm font-medium text-gray-700">{user.name}</span>
+                    <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center">
+                      <span className="text-white font-medium text-sm">
+                        {user.full_name ? user.full_name.charAt(0).toUpperCase() : 'U'}
+                      </span>
+                    </div>
+                    <span className="hidden md:block text-sm font-medium text-gray-700">{user.full_name}</span>
                     {user.is_admin && (
                       <Shield size={14} className="text-blue-600" title="Admin" />
                     )}
