@@ -145,8 +145,8 @@ const LoginPage = () => {
             <div className="mt-6 p-4 bg-blue-50 rounded-lg">
               <p className="text-sm text-blue-700 font-medium mb-2">Demo Credentials:</p>
               <p className="text-xs text-blue-600">
-                Email: any@umt.edu<br />
-                Password: any password
+                Email: admin@lostfound.com<br />
+                Password: admin123
               </p>
             </div>
 
