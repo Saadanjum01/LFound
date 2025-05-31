@@ -10,7 +10,13 @@ class Settings(BaseSettings):
     # Application Settings
     environment: str = os.getenv("ENVIRONMENT", "development")
     secret_key: str = os.getenv("SECRET_KEY", "your-super-secret-jwt-key-change-this")
-    allowed_origins: List[str] = ["http://localhost:3000", "http://localhost:3001"]
+    allowed_origins: List[str] = [
+        "http://localhost:3000", 
+        "http://localhost:3001",
+        "https://demobackend.emergentagent.com",
+        "https://demofrontend.emergentagent.com",
+        "*"  # Allow all origins for development
+    ]
     
     # JWT Settings
     jwt_algorithm: str = "HS256"
