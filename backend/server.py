@@ -346,7 +346,7 @@ async def upload_file(
     # Return file info
     return FileUploadResponse(
         url=f"/uploads/{unique_filename}",
-        public_url=f"http://localhost:8001/uploads/{unique_filename}",
+        public_url=f"https://demobackend.emergentagent.com/uploads/{unique_filename}",
         path=str(file_path)
     )
 
