@@ -16,123 +16,133 @@ import ItemDetailPage from './pages/ItemDetailPage';
 import DashboardPage from './pages/DashboardPage';
 import AdminDashboard from './pages/AdminDashboard';
 
-// Mock data for demonstration
-const MOCK_ITEMS = [
-  {
-    id: 1,
-    type: 'lost',
-    title: 'Blue iPhone 14 Pro',
-    category: 'Electronics',
-    description: 'Lost my blue iPhone 14 Pro near the library. Has a clear case with some stickers on the back.',
-    location: 'Main Library',
-    date: '2025-03-15',
-    image: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=400',
-    reward: 50,
-    urgency: 'high',
-    contact: 'john.doe@umt.edu',
-    status: 'active'
-  },
-  {
-    id: 2,
-    type: 'found',
-    title: 'Red Backpack',
-    category: 'Bags',
-    description: 'Found a red JanSport backpack in the cafeteria. Contains some textbooks and notebooks.',
-    location: 'Student Cafeteria',
-    date: '2025-03-14',
-    image: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=400',
-    reward: 0,
-    urgency: 'medium',
-    contact: 'jane.smith@umt.edu',
-    status: 'active'
-  },
-  {
-    id: 3,
-    type: 'lost',
-    title: 'Silver MacBook Air',
-    category: 'Electronics',
-    description: 'Lost my MacBook Air in the computer science building. Has a "UMT CS" sticker on it.',
-    location: 'Computer Science Building',
-    date: '2025-03-13',
-    image: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=400',
-    reward: 100,
-    urgency: 'high',
-    contact: 'alex.johnson@umt.edu',
-    status: 'active'
-  },
-  {
-    id: 4,
-    type: 'found',
-    title: 'Black Wallet',
-    category: 'Personal Items',
-    description: 'Found a black leather wallet near the parking lot. Contains ID and some cards.',
-    location: 'Parking Lot A',
-    date: '2025-03-12',
-    image: 'https://images.unsplash.com/photo-1627123424574-724758594e93?w=400',
-    reward: 0,
-    urgency: 'high',
-    contact: 'sarah.wilson@umt.edu',
-    status: 'active'
-  },
-  {
-    id: 5,
-    type: 'lost',
-    title: 'Gold Ring',
-    category: 'Jewelry',
-    description: 'Lost my grandmother\'s gold ring in the gymnasium. Very sentimental value.',
-    location: 'Main Gymnasium',
-    date: '2025-03-11',
-    image: 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=400',
-    reward: 200,
-    urgency: 'high',
-    contact: 'mike.brown@umt.edu',
-    status: 'active'
-  },
-  {
-    id: 6,
-    type: 'found',
-    title: 'Blue Water Bottle',
-    category: 'Personal Items',
-    description: 'Found a blue Hydro Flask water bottle in the engineering building.',
-    location: 'Engineering Building',
-    date: '2025-03-10',
-    image: 'https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=400',
-    reward: 0,
-    urgency: 'low',
-    contact: 'lisa.davis@umt.edu',
-    status: 'active'
-  }
-];
+// Import API services
+import { 
+  authAPI, 
+  itemsAPI, 
+  isAuthenticated, 
+  getCurrentUserFromStorage,
+  healthCheck
+} from './services/api';
 
 // User context
 const UserContext = React.createContext();
 
 function App() {
   const [user, setUser] = useState(null);
-  const [items, setItems] = useState(MOCK_ITEMS);
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Auto-login for demo purposes
+  // Check authentication status on app load
   useEffect(() => {
-    const demoUser = {
-      id: 1,
-      name: 'John Doe',
-      email: 'john.doe@umt.edu',
-      avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
-      is_admin: true // Demo user has admin privileges
+    const initializeApp = async () => {
+      try {
+        // Check backend health
+        await healthCheck();
+        
+        // Check if user is authenticated
+        if (isAuthenticated()) {
+          const storedUser = getCurrentUserFromStorage();
+          if (storedUser) {
+            try {
+              // Verify token is still valid by fetching current user
+              const currentUser = await authAPI.getCurrentUser();
+              setUser(currentUser);
+            } catch (error) {
+              // Token is invalid, clear storage
+              authAPI.logout();
+              setUser(null);
+            }
+          }
+        }
+        
+        // Load public items (active items for browsing)
+        await loadItems();
+        
+      } catch (error) {
+        console.error('Failed to initialize app:', error);
+        setError('Failed to connect to the backend. Please try again later.');
+      } finally {
+        setLoading(false);
+      }
     };
-    setUser(demoUser);
+
+    initializeApp();
   }, []);
 
-  const addItem = (newItem) => {
-    const item = {
-      ...newItem,
-      id: Date.now(),
-      date: new Date().toISOString().split('T')[0],
-      status: 'active',
-      contact: user?.email || 'user@umt.edu'
-    };
-    setItems([item, ...items]);
-    return item.id;
+  const loadItems = async (filters = {}) => {
+    try {
+      const fetchedItems = await itemsAPI.getItems({
+        status: 'active',
+        ...filters
+      });
+      setItems(fetchedItems);
+    } catch (error) {
+      console.error('Failed to load items:', error);
+      setError('Failed to load items. Please try again.');
+    }
+  };
+
+  const addItem = async (newItem) => {
+    try {
+      const createdItem = await itemsAPI.createItem(newItem);
+      
+      // Add to local state for immediate UI update
+      setItems(prevItems => [createdItem, ...prevItems]);
+      
+      return createdItem.id;
+    } catch (error) {
+      console.error('Failed to create item:', error);
+      throw new Error('Failed to create item. Please try again.');
+    }
+  };
+
+  const updateItem = async (itemId, updateData) => {
+    try {
+      const updatedItem = await itemsAPI.updateItem(itemId, updateData);
+      
+      // Update local state
+      setItems(prevItems => 
+        prevItems.map(item => 
+          item.id === itemId ? updatedItem : item
+        )
+      );
+      
+      return updatedItem;
+    } catch (error) {
+      console.error('Failed to update item:', error);
+      throw new Error('Failed to update item. Please try again.');
+    }
+  };
+
+  const login = async (credentials) => {
+    try {
+      const response = await authAPI.login(credentials);
+      setUser(response.user);
+      return response;
+    } catch (error) {
+      console.error('Login failed:', error);
+      throw error;
+    }
+  };
+
+  const register = async (userData) => {
+    try {
+      const response = await authAPI.register(userData);
+      setUser(response.user);
+      return response;
+    } catch (error) {
+      console.error('Registration failed:', error);
+      throw error;
+    }
+  };
+
+  const logout = () => {
+    authAPI.logout();
+    setUser(null);
+    // Reload items to show only public ones
+    loadItems();
   };
 
   // Admin route guard
@@ -142,8 +152,56 @@ function App() {
     return children;
   };
 
+  // Protected route guard
+  const ProtectedRoute = ({ children }) => {
+    if (!user) return <Navigate to="/login" />;
+    return children;
+  };
+
+  // Loading screen
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading Lost & Found Portal...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error screen
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-red-50 via-red-50 to-red-100 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto p-6">
+          <div className="text-red-500 text-6xl mb-4">⚠️</div>
+          <h1 className="text-2xl font-bold text-red-800 mb-2">Connection Error</h1>
+          <p className="text-red-600 mb-4">{error}</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <UserContext.Provider value={{ user, setUser, items, setItems, addItem }}>
+    <UserContext.Provider value={{ 
+      user, 
+      setUser, 
+      items, 
+      setItems, 
+      addItem, 
+      updateItem,
+      loadItems,
+      login,
+      register,
+      logout
+    }}>
       <div className="App min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
         <Router>
           <Header />
@@ -152,14 +210,26 @@ function App() {
               <Route path="/" element={<LandingPage />} />
               <Route path="/login" element={user ? <Navigate to="/dashboard" /> : <LoginPage />} />
               <Route path="/register" element={user ? <Navigate to="/dashboard" /> : <RegisterPage />} />
-              <Route path="/dashboard" element={user ? <DashboardPage /> : <Navigate to="/login" />} />
+              <Route path="/dashboard" element={
+                <ProtectedRoute>
+                  <DashboardPage />
+                </ProtectedRoute>
+              } />
               <Route path="/admin" element={
                 <AdminRoute>
                   <AdminDashboard />
                 </AdminRoute>
               } />
-              <Route path="/post-lost" element={user ? <PostLostPage /> : <Navigate to="/login" />} />
-              <Route path="/post-found" element={user ? <PostFoundPage /> : <Navigate to="/login" />} />
+              <Route path="/post-lost" element={
+                <ProtectedRoute>
+                  <PostLostPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/post-found" element={
+                <ProtectedRoute>
+                  <PostFoundPage />
+                </ProtectedRoute>
+              } />
               <Route path="/lost-items" element={<BrowseLostPage />} />
               <Route path="/found-items" element={<BrowseFoundPage />} />
               <Route path="/item/:id" element={<ItemDetailPage />} />
